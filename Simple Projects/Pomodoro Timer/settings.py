@@ -14,12 +14,12 @@ class Settings(QWidget):
 
         self.setTime = QLineEdit()
         self.setTime.setPlaceholderText("00:25:00")
-        self.setTimeBtn = QPushButton("Ayarla")
+        self.setTimeBtn = QPushButton("SET")
         self.setTimeBtn.clicked.connect(self.setTimeFunc)
 
         self.setDefaultAdd = QLineEdit()
-        self.setDefaultAdd.setPlaceholderText("+, - için değer belirleyin")
-        self.setDefaultAddBtn = QPushButton("Ayarla")
+        self.setDefaultAdd.setPlaceholderText("default value for +, -")
+        self.setDefaultAddBtn = QPushButton("SET")
         self.setDefaultAddBtn.clicked.connect(self.setDefaultAddFunc)
 
         self.layout.addLayout(self.section1)
