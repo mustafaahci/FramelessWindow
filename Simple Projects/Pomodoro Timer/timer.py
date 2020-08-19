@@ -4,82 +4,85 @@ from PyQt5.QtWidgets import QLabel
 
 
 class Timer(QLabel):
+    DEFAULT_TIME = (0, 25, 0)
 
-    DEFAULT_TIME = (00, 25, 00)
-
-    def __init__(self, default_time=DEFAULT_TIME):
+    def __init__(self, time=DEFAULT_TIME):
         super().__init__()
-        self.hours = default_time[0]
-        self.minutes = default_time[1]
-        self.seconds = default_time[2]
-
+        self._hours = time[0]
+        self._minutes = time[1]
+        self._seconds = time[2]
+        
         self._defaultAdd = 5
 
-        self.sound = QSound("Files/Soft-alarm-tone.wav")
+        self._sound = QSound("Files/Soft-alarm-tone.wav")
 
         self._timer = QTimer()
-        self._timer.timeout.connect(self._updateTimer)
+        self._timer.timeout.connect(self._updateTime)
 
         self.updateText()
 
-    def getTime(self):
-        return self.hours, self.minutes, self.seconds
-
     def getHours(self):
-        return self.hours
+        return self._hours
 
     def getMinutes(self):
-        return self.minutes
+        return self._minutes
 
     def getSeconds(self):
-        return self.seconds
+        return self._seconds
 
     def getDefaultAdd(self):
         return self._defaultAdd
 
-    def setDefaultAdd(self, a):
-        self._defaultAdd = a
-
-    def __str__(self):
-        return "{:02d}:{:02d}:{:02d}".format(self.hours, self.minutes, self.seconds)
-
-    def setText(self, a0: str):
-        full_time = a0.split(":")
-        self.hours = int(full_time[0])
-        self.minutes = int(full_time[1])
-        self.seconds = int(full_time[2])
-        super().setText(self.__str__())
-
-    def setTime(self, h, m, s):
-        self.hours = h
-        self.minutes = m
-        self.seconds = s
+    def getTime(self):
+        return self._hours, self._minutes, self._seconds
 
     def addHours(self, h):
-        self.hours += h
+        self._hours += h
 
     def addMins(self, m):
-        if self.minutes + m > 59:
-            self.hours += 1
-            self.minutes = (self.minutes + m) - 60
+        if self._minutes + m > 59:
+            self._hours += 1
+            self._minutes = (self._minutes + m) - 60
+        elif self._minutes + m < 0 and self._hours != 0:
+            self._hours -= 1
+            self._minutes = 60 + (self._minutes + m)
+        elif self._minutes + m < 0 and self._hours == 0:
+            return
         else:
-            self.minutes += m
+            self._minutes += m
 
     def addSecs(self, s):
-        if self.seconds + s > 59:
-            self.minutes += 1
-            self.seconds = (self.seconds + s) - 60
+        if self._seconds + s > 59:
+            self._minutes += 1
+            self._seconds = (self._seconds + s) - 60
         else:
-            self.seconds += s
+            self._seconds += s
 
     def reset(self):
-        self.hours = self.DEFAULT_TIME[0]
-        self.minutes = self.DEFAULT_TIME[1]
-        self.seconds = self.DEFAULT_TIME[2]
-        self._timer.stop()
+        self._hours = self.DEFAULT_TIME[0]
+        self._minutes = self.DEFAULT_TIME[1]
+        self._seconds = self.DEFAULT_TIME[2]
 
-    def setDefaultTime(self, h, m, s):
-        self.DEFAULT_TIME = (h, m, s)
+    def updateText(self):
+        self.setText(self.__str__())
+
+    def _updateTime(self):
+        if self._seconds == 0:
+            if self._minutes == 0:
+                if self._hours == 0:
+                    self._timer.stop()
+                    self._sound.play()
+                else:
+                    self._hours -= 1
+                    self._minutes += 59
+                    self._seconds += 59
+            else:
+                self._minutes -= 1
+                self._seconds += 59
+        else:
+            self._seconds -= 1
+
+        self.updateText()
 
     def start(self, interval=1000):
         self._timer.start(interval)
@@ -87,30 +90,32 @@ class Timer(QLabel):
     def stop(self):
         self._timer.stop()
 
-    def _updateTimer(self):
-        if self.seconds == 0:
-            if self.minutes == 0:
-                if self.hours == 0:
-                    self.playSound()
-                    self.stop()
-                else:
-                    self.hours -= 1
-                    self.minutes += 59
-            else:
-                self.minutes -= 1
-                self.seconds += 59
-        else:
-            self.seconds -= 1
-        self.updateText()
-
-    def updateText(self):
-        self.setText(self.__str__())
-
     def isActive(self):
         return self._timer.isActive()
 
+    def setTime(self, h, m, s):
+        self._hours = h
+        self._minutes = m
+        self._seconds = s
+
+    def setDefaultTime(self, h, m, s):
+        self.DEFAULT_TIME = (h, m, s)
+
+    def setDefaultAdd(self, a):
+        try:
+            a = int(a)
+            if a < 0:
+                return
+            else:
+                self._defaultAdd = a
+        except ValueError:
+            return
+
     def playSound(self):
-        self.sound.play()
+        self._sound.play()
 
     def stopSound(self):
-        self.sound.stop()
+        self._sound.stop()
+
+    def __str__(self):
+        return "{:02d}:{:02d}:{:02d}".format(self._hours, self._minutes, self._seconds)

@@ -1,60 +1,53 @@
 import sys
 
-from PyQt5.QtGui import QIcon
+from PyQt5 import QtCore, QtGui
 
 from timer import *
+from settings import *
 
-from settings import Settings
-
-from PyQt5 import QtGui, QtCore, Qt
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, \
-    QGraphicsOpacityEffect, QSystemTrayIcon, QMenu, QAction
-
-
-class toolButton(QPushButton):
-
-    def __init__(self, text=""):
-        super().__init__()
-        self.setMouseTracking(True)
-        self.text = text
-        self.setText(self.text)
-
-    def enterEvent(self, a0: QtCore.QEvent):
-        self.setCursor(Qt.PointingHandCursor)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QWidget, QApplication, QSystemTrayIcon, QMenu, QAction, QLabel, QVBoxLayout, QPushButton, \
+    QHBoxLayout, QGraphicsOpacityEffect
 
 
 class Window(QWidget):
-    windowTwo: QWidget
+    settingsScreen: QWidget
 
     def __init__(self):
         super().__init__()
-        self.setWindowFlag(Qt.FramelessWindowHint)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint)
-        self.setWindowFlag(Qt.Tool)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowIcon(QIcon("Files/python.png"))
-        self.setFixedWidth(250)
-        self.setFixedHeight(110)
-
-        self.mainLayout = QVBoxLayout()
+        self.layout = QVBoxLayout()
         self.subLayout = QHBoxLayout()
         self.toolLayout = QVBoxLayout()
 
-        self.trayIcon = QSystemTrayIcon(QIcon("Files/python.png"), self)
-        self.trayMenu = QMenu()
-        self.exit = QAction("Çıkış")
-        self.trayMenu.addAction(self.exit)
+        # WINDOW
+        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setWindowFlag(Qt.Tool)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowTitle("Pomodoro Timer")
+        self.setFixedWidth(250)
+        self.setFixedHeight(110)
+
+        # SYSTEM TRAY
+        self.trayIcon = QSystemTrayIcon(QIcon("Files/python.png"))
+        self.trayIconMenu = QMenu()
+        self.exit = QAction("ÇIKIŞ")
+        self.trayIconMenu.addAction(self.exit)
+        self.trayIcon.setContextMenu(self.trayIconMenu)
         self.exit.triggered.connect(app.exit)
-        self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.show()
 
+        self.move(self.screen().size().width() - self.size().width() - 10, self.screen().size().height() - self.size().height() - 47 )
+
         self.timer = Timer()
-        self.timer.setStyleSheet("color: white; background: rgba(0,0,0,.5); padding: 10px;"
-                                 "font: 36px Bahnschrift;")
+        self.timer.setStyleSheet("color: white; background: rgba(0,0,0,.5); font: 36px Bahnschrift;")
         self.timer.setAlignment(Qt.AlignCenter)
 
-        # buttons
+        self.opacity = QGraphicsOpacityEffect()
+        self.opacity.setOpacity(0.7)
+        self.setGraphicsEffect(self.opacity)
+
         buttonStyle = """
             QPushButton{
                 font: 16px Comfortaa;
@@ -67,41 +60,46 @@ class Window(QWidget):
                 border: 1px solid rgba(0,0,0,.5);
             }
         """
-        self.addButton = toolButton("+")
+
+        self.addButton = QPushButton("+")
         self.addButton.setFixedWidth(25)
         self.addButton.setStyleSheet(buttonStyle)
+        self.addButton.setCursor(Qt.PointingHandCursor)
         self.addButton.clicked.connect(self.addTime)
-        self.subtrButton = toolButton("-")
+        self.subtrButton = QPushButton("-")
         self.subtrButton.setFixedWidth(25)
         self.subtrButton.setStyleSheet(buttonStyle)
+        self.subtrButton.setCursor(Qt.PointingHandCursor)
         self.subtrButton.clicked.connect(self.subtrTime)
-        self.resetButton = toolButton("⟲")
+        self.resetButton = QPushButton("⟲")
         self.resetButton.setFixedWidth(25)
         self.resetButton.setStyleSheet(buttonStyle)
+        self.resetButton.setCursor(Qt.PointingHandCursor)
         self.resetButton.clicked.connect(self.resetTime)
 
-        # moving window
-        self.move(self.screen().size().width() - self.width(), self.screen().size().height() - self.height() - 32)
-
-        self.mainLayout.addLayout(self.subLayout)
+        self.layout.addLayout(self.subLayout)
         self.subLayout.addWidget(self.timer)
         self.subLayout.addLayout(self.toolLayout)
-
-        # tool layour
         self.toolLayout.addWidget(self.addButton)
         self.toolLayout.addWidget(self.subtrButton)
         self.toolLayout.addWidget(self.resetButton)
-
-        self.opacity = QGraphicsOpacityEffect(self)
-        self.opacity.setOpacity(0.7)
-        self.setGraphicsEffect(self.opacity)
-        self.setAutoFillBackground(True)
-
-        self.setLayout(self.mainLayout)
+        self.setLayout(self.layout)
         self.show()
 
+    def addTime(self):
+        self.timer.addMins(self.timer.getDefaultAdd())
+        self.timer.updateText()
+
+    def subtrTime(self):
+        self.timer.addMins(-self.timer.getDefaultAdd())
+        self.timer.updateText()
+
+    def resetTime(self):
+        self.timer.reset()
+        self.timer.updateText()
+
     def enterEvent(self, a0: QtCore.QEvent):
-        self.opacity.setOpacity(1.0)
+        self.opacity.setOpacity(1)
 
     def leaveEvent(self, a0: QtCore.QEvent):
         self.opacity.setOpacity(0.7)
@@ -114,26 +112,10 @@ class Window(QWidget):
         self.timer.stopSound()
 
     def mouseDoubleClickEvent(self, a0: QtGui.QMouseEvent):
-        self.loadScreen()
-
-    def loadScreen(self):
-        self.windowTwo = Settings(self.timer)
-
-    def addTime(self):
-        self.timer.addMins(self.timer.getDefaultAdd())
-        self.timer.updateText()
-
-    def subtrTime(self):
-        if self.timer.getMinutes() != 0:
-            self.timer.addMins(-self.timer.getDefaultAdd())
-            self.timer.updateText()
-
-    def resetTime(self):
-        self.timer.reset()
-        self.timer.updateText()
+        self.settingsScreen = Settings(self.timer)
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = Window()
-    sys.exit(app.exec_())
+   app =  QApplication(sys.argv)
+   window = Window()
+   sys.exit(app.exec_())
