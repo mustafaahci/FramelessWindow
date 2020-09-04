@@ -6,4 +6,6 @@ I create various projects in Python using the PyQt5 framework and upload tutoria
 
 ---
 ### Frameless Window with resize, aero snap and shadow - screen shot:
+Thank you [ヽoo悾絔℅o。](https://github.com/892768447) for [NativeEvent](https://github.com/PyQt5/PyQt/blob/63c6376358acb1863313fb5593097e6e0210cad6/Demo/NativeEvent.py) example.
+
 ![SS](https://i.imgur.com/1rolcAQ.png)
