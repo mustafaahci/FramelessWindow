@@ -75,7 +75,7 @@ class Window(QWidget):
 
         # Create a thin frame
         style = win32gui.GetWindowLong(int(self.winId()), win32con.GWL_STYLE)
-        win32gui.SetWindowLong(int(self.winId()), win32con.GWL_STYLE, style | win32con.WS_THICKFRAME | win32con.WS_MINIMIZEBOX | win32con.WS_MAXIMIZEBOX | win32con.WS_CAPTION | win32con.WS_POPUP)
+        win32gui.SetWindowLong(int(self.winId()), win32con.GWL_STYLE, style | win32con.WS_THICKFRAME )
 
         if QtWin.isCompositionEnabled():
             # Aero Shadow
