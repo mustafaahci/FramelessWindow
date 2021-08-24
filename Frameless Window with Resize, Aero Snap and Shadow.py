@@ -10,42 +10,25 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QVBoxLayout, QSi
 from PyQt5.QtWinExtras import QtWin
 
 
-class MINMAXINFO(ctypes.Structure):
-    _fields_ = [
-        ("ptReserved", wintypes.POINT),
-        ("ptMaxSize", wintypes.POINT),
-        ("ptMaxPosition", wintypes.POINT),
-        ("ptMinTrackSize", wintypes.POINT),
-        ("ptMaxTrackSize", wintypes.POINT),
-    ]
+class TitleBar(QWidget):
 
-
-class AnotherWidget(QWidget):
-
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
         self._layout = QHBoxLayout()
+        button_style = "QPushButton{{border: none;outline: none;background-color: {};color: white;padding: 6px;width: 80px;font: 16px consolas;}}QPushButton:hover{{background-color: {};}}"
 
         # set size
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMinimumHeight(50)
 
-        self.button = QPushButton("EXIT", clicked=app.exit)
-        self.button.setStyleSheet("""
-            QPushButton{
-                border: none;
-                outline: none;
-                background-color: rgb(220,0,0);
-                color: white;
-                padding: 6px;
-                width: 80px;
-                font: 16px consolas;
-            }
-            
-            QPushButton:hover{
-            background-color: rgb(240,0,0);
-            }
-        """)
+        self.close_button = QPushButton("EXIT", clicked=app.exit)
+        self.close_button.setStyleSheet(button_style.format('rgb(220, 0, 0)', 'rgb(240, 0, 0)'))
+
+        self.maximize_button = QPushButton("Maximize", clicked=parent.showMaximized)
+        self.maximize_button.setStyleSheet(button_style.format('rgb(25, 118, 210)', 'rgb(39, 136, 232)'))
+
+        self.minimize_button = QPushButton("Minimize", clicked=parent.showMinimized)
+        self.minimize_button.setStyleSheet(button_style.format('rgb(76, 175, 80)', 'rgb(92, 196, 96)'))
 
         # set background color
         self.setAutoFillBackground(True)
@@ -54,17 +37,20 @@ class AnotherWidget(QWidget):
         self.setPalette(p)
 
         self._layout.addStretch()
-        self._layout.addWidget(self.button)
+        self._layout.addWidget(self.minimize_button)
+        self._layout.addWidget(self.maximize_button)
+        self._layout.addWidget(self.close_button)
+
         self.setLayout(self._layout)
 
 
 class Window(QWidget):
-    BorderWidth = 5
+    BORDER_WIDTH = 5
 
     def __init__(self):
         super().__init__()
         # get the available resolutions without taskbar
-        self._rect = QApplication.instance().desktop().availableGeometry(self)
+        self.rect = QApplication.instance().desktop().availableGeometry(self)
         self.resize(800, 600)
         self.setWindowFlags(Qt.Window
                             | Qt.FramelessWindowHint
@@ -74,8 +60,10 @@ class Window(QWidget):
                             | Qt.WindowCloseButtonHint)
 
         # Create a thin frame
-        style = win32gui.GetWindowLong(int(self.winId()), win32con.GWL_STYLE)
-        win32gui.SetWindowLong(int(self.winId()), win32con.GWL_STYLE, style | win32con.WS_THICKFRAME )
+        self.hwnd = int(self.winId())
+        style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
+        win32gui.SetWindowLong(self.hwnd, win32con.GWL_STYLE,
+                               style | win32con.WS_POPUP | win32con.WS_THICKFRAME | win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_MAXIMIZEBOX | win32con.WS_MINIMIZEBOX)
 
         if QtWin.isCompositionEnabled():
             # Aero Shadow
@@ -88,7 +76,7 @@ class Window(QWidget):
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
 
-        self.controlWidget = AnotherWidget()
+        self.controlWidget = TitleBar(self)
         self.controlWidget.setObjectName("controlWidget")
 
         # main widget is here
@@ -109,41 +97,38 @@ class Window(QWidget):
         self.setLayout(self._layout)
         self.show()
 
-    def nativeEvent(self, eventType, message):
-        retval, result = super().nativeEvent(eventType, message)
+    def nativeEvent(self, event, message):
+        return_value, result = super().nativeEvent(event, message)
 
         # if you use Windows OS
-        if eventType == "windows_generic_MSG":
+        if event == b'windows_generic_MSG':
             msg = ctypes.wintypes.MSG.from_address(message.__int__())
             # Get the coordinates when the mouse moves.
-            x = win32api.LOWORD(ctypes.c_long(msg.lParam).value) - self.frameGeometry().x()
-            y = win32api.HIWORD(ctypes.c_long(msg.lParam).value) - self.frameGeometry().y()
+            x = win32api.LOWORD(ctypes.c_long(msg.lParam).value)
+            # converted an unsigned int to int (for dual monitor issue)
+            if x & 32768: x = x | -65536
+            y = win32api.HIWORD(ctypes.c_long(msg.lParam).value)
+            if y & 32768: y = y | -65536
+
+            x = x - self.frameGeometry().x()
+            y = y - self.frameGeometry().y()
 
             # Determine whether there are other controls(i.e. widgets etc.) at the mouse position.
             if self.childAt(x, y) is not None and self.childAt(x, y) is not self.findChild(QWidget, "controlWidget"):
                 # passing
-                if self.width() - 5 > x > 5 and y < self.height() - 5:
-                    return retval, result
+                if self.width() - self.BORDER_WIDTH > x > self.BORDER_WIDTH and y < self.height() - self.BORDER_WIDTH:
+                    return return_value, result
 
             if msg.message == win32con.WM_NCCALCSIZE:
                 # Remove system title
                 return True, 0
-            if msg.message == win32con.WM_GETMINMAXINFO:
-                # This message is triggered when the window position or size changes.
-                info = ctypes.cast(
-                    msg.lParam, ctypes.POINTER(MINMAXINFO)).contents
-                # Modify the maximized window size to the available size of the main screen.
-                info.ptMaxSize.x = self._rect.width()
-                info.ptMaxSize.y = self._rect.height()
-                # Modify the x and y coordinates of the placement point to (0,0).
-                info.ptMaxPosition.x, info.ptMaxPosition.y = 0, 0
 
             if msg.message == win32con.WM_NCHITTEST:
                 w, h = self.width(), self.height()
-                lx = x < self.BorderWidth
-                rx = x > w - self.BorderWidth
-                ty = y < self.BorderWidth
-                by = y > h - self.BorderWidth
+                lx = x < self.BORDER_WIDTH
+                rx = x > w - self.BORDER_WIDTH
+                ty = y < self.BORDER_WIDTH
+                by = y > h - self.BORDER_WIDTH
                 if lx and ty:
                     return True, win32con.HTTOPLEFT
                 if rx and by:
@@ -163,7 +148,7 @@ class Window(QWidget):
                 # Title
                 return True, win32con.HTCAPTION
 
-        return retval, result
+        return return_value, result
 
 
 if __name__ == '__main__':
