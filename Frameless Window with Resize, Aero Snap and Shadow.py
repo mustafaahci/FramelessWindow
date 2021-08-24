@@ -17,7 +17,6 @@ except ImportError:
     from PySide2.QtWinExtras import QtWin
 
 
-
 class TitleBar(QWidget):
 
     def __init__(self, parent):
