@@ -4,10 +4,18 @@ from ctypes import wintypes
 import win32api
 import win32con
 import win32gui
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QVBoxLayout, QSizePolicy, QHBoxLayout
-from PyQt5.QtWinExtras import QtWin
+
+try:
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QVBoxLayout, QSizePolicy, QHBoxLayout
+    from PyQt5.QtWinExtras import QtWin
+except ImportError:
+    from PySide2.QtCore import Qt
+    from PySide2.QtGui import QColor
+    from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QVBoxLayout, QSizePolicy, QHBoxLayout
+    from PySide2.QtWinExtras import QtWin
+
 
 
 class TitleBar(QWidget):
