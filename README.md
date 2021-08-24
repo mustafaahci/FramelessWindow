@@ -2,7 +2,7 @@
 - support those features:
   - Resizable
   - Draggable
-  - animations when minimizing, maximizing, restoring, snapping
+  - Animations when minimizing, maximizing, restoring, snapping
   - Aero snap support
   - Aero shake support
   - ALT+SPACE system menu works
