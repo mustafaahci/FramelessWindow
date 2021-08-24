@@ -1,4 +1,4 @@
-### Frameless Window:
+### Frameless Window
 - support those features:
   - Resizable
   - Draggable
