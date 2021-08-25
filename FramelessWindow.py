@@ -67,7 +67,7 @@ class Window(QWidget):
                             | Qt.WindowCloseButtonHint)
 
         # Create a thin frame
-        self.hwnd = int(self.winId())
+        self.hwnd = self.winId().__int__()
         style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
         win32gui.SetWindowLong(self.hwnd, win32con.GWL_STYLE,
                                style | win32con.WS_POPUP | win32con.WS_THICKFRAME | win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_MAXIMIZEBOX | win32con.WS_MINIMIZEBOX)
