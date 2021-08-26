@@ -117,10 +117,10 @@ class Window(QWidget):
         if event == b'windows_generic_MSG':
             msg = ctypes.wintypes.MSG.from_address(message.__int__())
             # Get the coordinates when the mouse moves.
-            x = win32api.LOWORD(ctypes.c_long(msg.lParam).value)
+            x = win32api.LOWORD(LONG(msg.lParam).value)
             # converted an unsigned int to int (for dual monitor issue)
             if x & 32768: x = x | -65536
-            y = win32api.HIWORD(ctypes.c_long(msg.lParam).value)
+            y = win32api.HIWORD(LONG(msg.lParam).value)
             if y & 32768: y = y | -65536
 
             x -= self.frameGeometry().x()
