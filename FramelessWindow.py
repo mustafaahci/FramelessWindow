@@ -2,7 +2,7 @@ import ctypes
 import win32api
 import win32gui
 
-from ctypes.wintypes import POINT, LONG
+from ctypes.wintypes import LONG
 
 from win32con import WM_GETMINMAXINFO, WM_NCCALCSIZE, GWL_STYLE, WM_NCHITTEST, WS_MAXIMIZEBOX, WS_THICKFRAME, \
     WS_CAPTION, WS_OVERLAPPEDWINDOW, HTTOPLEFT, HTBOTTOMRIGHT, HTTOPRIGHT, HTBOTTOMLEFT, \
