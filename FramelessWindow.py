@@ -1,9 +1,12 @@
 import ctypes
-from ctypes import wintypes
-
 import win32api
-import win32con
 import win32gui
+
+from ctypes.wintypes import POINT, LONG
+
+from win32con import WM_GETMINMAXINFO, WM_NCCALCSIZE, GWL_STYLE, WM_NCHITTEST, WS_MAXIMIZEBOX, WS_THICKFRAME, \
+    WS_CAPTION, WS_OVERLAPPEDWINDOW, HTTOPLEFT, HTBOTTOMRIGHT, HTTOPRIGHT, HTBOTTOMLEFT, \
+    HTTOP, HTBOTTOM, HTLEFT, HTRIGHT, HTCAPTION, WS_POPUP, WS_SYSMENU, WS_MINIMIZEBOX
 
 try:
     from PyQt5.QtCore import Qt
@@ -17,12 +20,22 @@ except ImportError:
     from PySide2.QtWinExtras import QtWin
 
 
+class RECT(ctypes.Structure):
+    _fields_ = [
+        ("left", LONG),
+        ("top", LONG),
+        ("right", LONG),
+        ("bottom", LONG)
+    ]
+
+
 class TitleBar(QWidget):
 
     def __init__(self, parent):
         super().__init__()
         self._layout = QHBoxLayout()
-        button_style = "QPushButton{{border: none;outline: none;background-color: {};color: white;padding: 6px;width: 80px;font: 16px consolas;}}QPushButton:hover{{background-color: {};}}"
+        button_style = "QPushButton{{border: none;outline: none;background-color: {};color: white;padding: 6px;width: " \
+                       "80px;font: 16px Consolas;}}QPushButton:hover{{background-color: {};}} "
 
         # set size
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -56,21 +69,13 @@ class Window(QWidget):
 
     def __init__(self):
         super().__init__()
-        # get the available resolutions without taskbar
-        self.rect = QApplication.instance().desktop().availableGeometry(self)
-        self.resize(800, 600)
-        self.setWindowFlags(Qt.Window
-                            | Qt.FramelessWindowHint
-                            | Qt.WindowSystemMenuHint
-                            | Qt.WindowMinimizeButtonHint
-                            | Qt.WindowMaximizeButtonHint
-                            | Qt.WindowCloseButtonHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint)
+        # self.setAttribute(Qt.WA_TranslucentBackground, True)
 
         # Create a thin frame
         self.hwnd = self.winId().__int__()
-        style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
-        win32gui.SetWindowLong(self.hwnd, win32con.GWL_STYLE,
-                               style | win32con.WS_POPUP | win32con.WS_THICKFRAME | win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_MAXIMIZEBOX | win32con.WS_MINIMIZEBOX)
+        window_style = win32gui.GetWindowLong(self.hwnd, GWL_STYLE)
+        win32gui.SetWindowLong(self.hwnd, GWL_STYLE, window_style | WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX)
 
         if QtWin.isCompositionEnabled():
             # Aero Shadow
@@ -79,12 +84,13 @@ class Window(QWidget):
             QtWin.resetExtendedFrame(self)
 
         # Window Widgets
+        self.resize(800, 600)
         self._layout = QVBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
 
         self.controlWidget = TitleBar(self)
-        self.controlWidget.setObjectName("controlWidget")
+        self.controlWidget.setObjectName("ControlWidget")
 
         # main widget is here
         self.mainWidget = QWidget()
@@ -94,10 +100,10 @@ class Window(QWidget):
         self.mainWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # set background color
-        self.mainWidget.setAutoFillBackground(True)
-        p = self.mainWidget.palette()
-        p.setColor(self.mainWidget.backgroundRole(), QColor("#272727"))
-        self.mainWidget.setPalette(p)
+        self.setAutoFillBackground(True)
+        p = self.palette()
+        p.setColor(self.backgroundRole(), QColor("#272727"))
+        self.setPalette(p)
 
         self._layout.addWidget(self.controlWidget)
         self._layout.addWidget(self.mainWidget)
@@ -117,43 +123,55 @@ class Window(QWidget):
             y = win32api.HIWORD(ctypes.c_long(msg.lParam).value)
             if y & 32768: y = y | -65536
 
-            x = x - self.frameGeometry().x()
-            y = y - self.frameGeometry().y()
+            x -= self.frameGeometry().x()
+            y -= self.frameGeometry().y()
 
             # Determine whether there are other controls(i.e. widgets etc.) at the mouse position.
-            if self.childAt(x, y) is not None and self.childAt(x, y) is not self.findChild(QWidget, "controlWidget"):
+            if self.childAt(x, y) is not None and self.childAt(x, y) is not self.findChild(QWidget, "ControlWidget"):
                 # passing
                 if self.width() - self.BORDER_WIDTH > x > self.BORDER_WIDTH and y < self.height() - self.BORDER_WIDTH:
                     return return_value, result
 
-            if msg.message == win32con.WM_NCCALCSIZE:
+            if msg.message == WM_NCCALCSIZE:
                 # Remove system title
                 return True, 0
 
-            if msg.message == win32con.WM_NCHITTEST:
+            if msg.message == WM_GETMINMAXINFO:
+                # This message will be triggered when the position or size of the window changes
+
+                if ctypes.windll.user32.IsZoomed(self.hwnd):
+                    frame = RECT(0, 0, 0, 0)
+                    ctypes.windll.user32.AdjustWindowRectEx(ctypes.byref(frame), WS_OVERLAPPEDWINDOW, False, 0)
+                    frame.left = abs(frame.left)
+                    frame.top = abs(frame.bottom)
+                    self.setContentsMargins(frame.left, frame.top, frame.right, frame.bottom)
+                else:
+                    self.setContentsMargins(0, 0, 0, 0)
+
+            if msg.message == WM_NCHITTEST:
                 w, h = self.width(), self.height()
                 lx = x < self.BORDER_WIDTH
                 rx = x > w - self.BORDER_WIDTH
                 ty = y < self.BORDER_WIDTH
                 by = y > h - self.BORDER_WIDTH
                 if lx and ty:
-                    return True, win32con.HTTOPLEFT
+                    return True, HTTOPLEFT
                 if rx and by:
-                    return True, win32con.HTBOTTOMRIGHT
+                    return True, HTBOTTOMRIGHT
                 if rx and ty:
-                    return True, win32con.HTTOPRIGHT
+                    return True, HTTOPRIGHT
                 if lx and by:
-                    return True, win32con.HTBOTTOMLEFT
+                    return True, HTBOTTOMLEFT
                 if ty:
-                    return True, win32con.HTTOP
+                    return True, HTTOP
                 if by:
-                    return True, win32con.HTBOTTOM
+                    return True, HTBOTTOM
                 if lx:
-                    return True, win32con.HTLEFT
+                    return True, HTLEFT
                 if rx:
-                    return True, win32con.HTRIGHT
+                    return True, HTRIGHT
                 # Title
-                return True, win32con.HTCAPTION
+                return True, HTCAPTION
 
         return return_value, result
 
