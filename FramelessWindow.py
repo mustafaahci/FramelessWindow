@@ -4,8 +4,8 @@ import win32gui
 
 from ctypes.wintypes import LONG
 
-from win32con import WM_GETMINMAXINFO, WM_NCCALCSIZE, GWL_STYLE, WM_NCHITTEST, WS_MAXIMIZEBOX, WS_THICKFRAME, \
-    WS_CAPTION, WS_OVERLAPPEDWINDOW, HTTOPLEFT, HTBOTTOMRIGHT, HTTOPRIGHT, HTBOTTOMLEFT, \
+from win32con import WM_NCCALCSIZE, GWL_STYLE, WM_NCHITTEST, WS_MAXIMIZEBOX, WS_THICKFRAME, \
+    WS_CAPTION, HTTOPLEFT, HTBOTTOMRIGHT, HTTOPRIGHT, HTBOTTOMLEFT, \
     HTTOP, HTBOTTOM, HTLEFT, HTRIGHT, HTCAPTION, WS_POPUP, WS_SYSMENU, WS_MINIMIZEBOX
 
 try:
@@ -18,15 +18,6 @@ except ImportError:
     from PySide2.QtGui import QColor
     from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QVBoxLayout, QSizePolicy, QHBoxLayout
     from PySide2.QtWinExtras import QtWin
-
-
-class RECT(ctypes.Structure):
-    _fields_ = [
-        ("left", LONG),
-        ("top", LONG),
-        ("right", LONG),
-        ("bottom", LONG)
-    ]
 
 
 class TitleBar(QWidget):
@@ -69,13 +60,10 @@ class Window(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint)
-        # self.setAttribute(Qt.WA_TranslucentBackground, True)
-
-        # Create a thin frame
         self.hwnd = self.winId().__int__()
         window_style = win32gui.GetWindowLong(self.hwnd, GWL_STYLE)
-        win32gui.SetWindowLong(self.hwnd, GWL_STYLE, window_style | WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX)
+        win32gui.SetWindowLong(self.hwnd, GWL_STYLE, window_style | WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU
+                                                                  | WS_MAXIMIZEBOX | WS_MINIMIZEBOX)
 
         if QtWin.isCompositionEnabled():
             # Aero Shadow
@@ -110,6 +98,16 @@ class Window(QWidget):
         self.setLayout(self._layout)
         self.show()
 
+    def changeEvent(self, event):
+        if event.type() == event.WindowStateChange:
+            if self.windowState() & Qt.WindowMaximized:
+                margin = abs(self.mapToGlobal(self.rect().topLeft()).y())
+                self.setContentsMargins(margin, margin, margin, margin)
+            else:
+                self.setContentsMargins(0, 0, 0, 0)
+
+        return super(Window, self).changeEvent(event)
+
     def nativeEvent(self, event, message):
         return_value, result = super().nativeEvent(event, message)
 
@@ -135,18 +133,6 @@ class Window(QWidget):
             if msg.message == WM_NCCALCSIZE:
                 # Remove system title
                 return True, 0
-
-            if msg.message == WM_GETMINMAXINFO:
-                # This message will be triggered when the position or size of the window changes
-
-                if ctypes.windll.user32.IsZoomed(self.hwnd):
-                    frame = RECT(0, 0, 0, 0)
-                    ctypes.windll.user32.AdjustWindowRectEx(ctypes.byref(frame), WS_OVERLAPPEDWINDOW, False, 0)
-                    frame.left = abs(frame.left)
-                    frame.top = abs(frame.bottom)
-                    self.setContentsMargins(frame.left, frame.top, frame.right, frame.bottom)
-                else:
-                    self.setContentsMargins(0, 0, 0, 0)
 
             if msg.message == WM_NCHITTEST:
                 w, h = self.width(), self.height()
