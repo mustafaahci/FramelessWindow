@@ -1,8 +1,7 @@
-import ctypes
 import win32api
 import win32gui
 
-from ctypes.wintypes import LONG
+from ctypes.wintypes import LONG, MSG
 
 from win32con import WM_NCCALCSIZE, GWL_STYLE, WM_NCHITTEST, WS_MAXIMIZEBOX, WS_THICKFRAME, \
     WS_CAPTION, HTTOPLEFT, HTBOTTOMRIGHT, HTTOPRIGHT, HTBOTTOMLEFT, \
@@ -113,20 +112,14 @@ class Window(QWidget):
 
         # if you use Windows OS
         if event == b'windows_generic_MSG':
-            msg = ctypes.wintypes.MSG.from_address(message.__int__())
+            msg = MSG.from_address(message.__int__())
             # Get the coordinates when the mouse moves.
-            x = win32api.LOWORD(LONG(msg.lParam).value)
-            # converted an unsigned int to int (for dual monitor issue)
-            if x & 32768: x = x | -65536
-            y = win32api.HIWORD(LONG(msg.lParam).value)
-            if y & 32768: y = y | -65536
-
-            x -= self.frameGeometry().x()
-            y -= self.frameGeometry().y()
+            # % 65536: converted an unsigned int to int (for dual monitor issue)
+            x = (win32api.LOWORD(LONG(msg.lParam).value) - self.frameGeometry().x()) % 65536
+            y = win32api.HIWORD(LONG(msg.lParam).value) - self.frameGeometry().y()
 
             # Determine whether there are other controls(i.e. widgets etc.) at the mouse position.
             if self.childAt(x, y) is not None and self.childAt(x, y) is not self.findChild(QWidget, "ControlWidget"):
-                # passing
                 if self.width() - self.BORDER_WIDTH > x > self.BORDER_WIDTH and y < self.height() - self.BORDER_WIDTH:
                     return return_value, result
 
@@ -156,10 +149,10 @@ class Window(QWidget):
                     return True, HTLEFT
                 if rx:
                     return True, HTRIGHT
-                # Title
+
                 return True, HTCAPTION
 
-        return return_value, result
+        return QWidget.nativeEvent(self, event, message)
 
 
 if __name__ == '__main__':
