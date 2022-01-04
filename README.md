@@ -1,4 +1,4 @@
-### Frameless Window
+### PyQt5 - PySide2 Frameless Window
 - Supported features
   - Resizing
   - Dragging
